@@ -1,6 +1,9 @@
 /*
 Javascript to compute what number to display based on the user input. 
-Uses a dictionary that stores True/False values for each number from 0-9 for each row item
+Uses a dictionary that stores True/False values for each number from 0-9 for each row item.
+
+User selection is placed inside a queue. This queue is used to determine which floor is next.
+
 */
 
 let numbers_dict = {
@@ -128,50 +131,52 @@ let numbers_dict = {
 
 
 window.onload = function () {
-    //Onload function for the main body. Will count to a random floor, then count back to 0
-    let initial_display = document.getElementById("main-body");
-    initial_display.addEventListener("load", function() {
-        let base_floor = "0";
-        let random_value = Math.floor(Math.random() * (10 - 4) + 4).toString();
-        let current_floor;
+    // When the window is loaded, start by counting from a random floor, then add the counting function to the user input panel
+    let current_floor;
+    let base_floor = "0", no_of_times = 1;
+    let random_value = Math.floor(Math.random() * (10 - 4) + 4).toString();
+    let no_pattern = createNumber(random_value, numbers_dict);
 
-        let no_pattern = createNumber(random_value, numbers_dict);
-        changeDisplayNumber(no_pattern);
+    changeDisplayNumber(no_pattern);
+    function countDownFloor() {
+        setTimeout(function() {
+            if (no_of_times) {
+                no_of_times--;
+                countDownFloor();
+            } else if (!no_of_times) {
+                current_floor = countToFloor(parseInt(random_value), base_floor);
+            }
+        }, 500); // Keep this time large enough
+    }
+    
+    countDownFloor();
 
-        let no_of_times = 1;
-        function countDownFloor() {
-            setTimeout(function() {
-                if (no_of_times) {
-                    no_of_times--;
-                    countDownFloor();
-                } else if (!no_of_times) {
-                    current_floor = countToFloor(parseInt(random_value), base_floor);
-                }
-
-            }, 500); // Keep this time large enough
-        }
-
-        countDownFloor();
-    });
-
-
-    // Declaring public values used by the buttons panel. Floor_value is an int that tracks the previously selected floor. At the start floor value is the base 0. Input_value is a string
+    // Declaring public values used by the buttons panel. The curr_floor tracks the previously selected floor. Floors array holds a queue of selected floors.
     let input_value;
-    let floor_value = 0;
+    let floors = [];
+    let curr_floor = 0;
 
-    // Event listener for the button control panel
+    // Event listener for the button control panel - change this to use wait fxn
     input_value = document.getElementById("userInput");
     input_value.addEventListener("click", function(e) {
-        floor_value = countToFloor(floor_value, e.target.value);
+        floors.push(parseInt(e.target.value));
+        setTimeout(() => {
+            if (floors.length) {
+                console.log("Previous floors in the queue:", floors);
+                let target_floor = floors.shift();
+                curr_floor = countToFloor(curr_floor, target_floor.toString());
+                console.log("Floors is now", floors);
+            }
+        }, 3000);
+        
     });
-
 }
 
 
 // FUNCTION DECLARATIONS
 
-// Function that creates a pattern object for a given number. The function returns a pattern object representing values for each row.
 function createNumber(value, lookup) {
+    // Function that creates a pattern object for a given number. The function returns a pattern object representing values for each row.
     let pattern_array = lookup[value];
     let pattern_obj = {};
     for (let i = 0; i < pattern_array.length; i++) {
@@ -180,8 +185,9 @@ function createNumber(value, lookup) {
     return pattern_obj;
 }
 
-// Function to loop over divs in a html element changing element classes according to row values.
+
 function changeDisplayNumber(object) {
+    // Function to loop over divs in a html element changing element classes according to row values.
     let row_sequences = object;
     for (let row_no in object) {
         let col_val, col_state;
@@ -200,10 +206,12 @@ function changeDisplayNumber(object) {
     }
 }
 
-//Function to count and change the display value up to the selected number.floor_val is an int floor_num is a string.
-function countToFloor(floor_value, floor_num) {
-    let start = floor_value;
-    let end = floor_num;
+
+function countToFloor(curr_floor, target_floor) {
+    // Function to count and change the display value up to the selected number.
+    // curr_floor is an int, target_floor is a string.
+    let start = curr_floor;
+    let end = target_floor;
     let number_of_times = Math.abs(parseInt(end) - start);
 
     function timedRepeat(number_val, value) {
@@ -223,6 +231,6 @@ function countToFloor(floor_value, floor_num) {
     } else if (end < start) {
         timedRepeat(start, -1);
     }
-    start = parseInt(end); //returns a new floor value where the last floor is the start floor
+    start = parseInt(end); // New start value is the end value.
     return start;
 }
